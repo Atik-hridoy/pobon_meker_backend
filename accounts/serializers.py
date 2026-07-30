@@ -51,7 +51,42 @@ class UserSerializer(serializers.ModelSerializer):
             last_name=last_name
         )
         
-        # Create user profile
-        UserProfile.objects.create(user=user, phone_number=phonenumber)
+        # Update user profile created by signal
+        if phonenumber:
+            user.profile.phone_number = phonenumber
+            user.profile.save()
         
         return user
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    phone_number = serializers.CharField(source='profile.phone_number', required=False, allow_blank=True)
+    shipping_address = serializers.CharField(source='profile.shipping_address', required=False, allow_blank=True)
+    avatar = serializers.ImageField(source='profile.avatar', required=False, allow_null=True)
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'phone_number', 'shipping_address', 'avatar')
+        
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        
+        # Update User instance
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.email = validated_data.get('email', instance.email)
+        instance.save()
+        
+        # Update UserProfile instance
+        profile = instance.profile
+        profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+        
+        if 'shipping_address' in profile_data:
+            profile.shipping_address = profile_data.get('shipping_address', profile.shipping_address)
+        
+        # Handle avatar separately (only update if provided)
+        if 'avatar' in profile_data:
+            profile.avatar = profile_data['avatar']
+            
+        profile.save()
+        
+        return instance

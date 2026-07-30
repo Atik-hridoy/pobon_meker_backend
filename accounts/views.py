@@ -1,9 +1,10 @@
 from rest_framework import generics, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.models import User
 from core.responses import StandardResponse
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserProfileUpdateSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -50,5 +51,37 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             success=True,
             message="Login successful.",
             data=data,
+            status=status.HTTP_200_OK
+        )
+
+class ProfileAPIView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileUpdateSerializer
+    permission_classes = (IsAuthenticated,)
+    parser_classes = (MultiPartParser, FormParser, JSONParser) # For handling file uploads (avatar) and JSON
+    
+    def get_object(self):
+        return self.request.user
+
+    def retrieve(self, request, *args, **kwargs) -> StandardResponse:
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return StandardResponse(
+            success=True,
+            message="Profile fetched successfully.",
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def update(self, request, *args, **kwargs) -> StandardResponse:
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return StandardResponse(
+            success=True,
+            message="Profile updated successfully.",
+            data=serializer.data,
             status=status.HTTP_200_OK
         )
