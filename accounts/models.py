@@ -22,3 +22,23 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
+
+class SavedPaymentMethod(models.Model):
+    PROVIDER_CHOICES = [
+        ('bkash', 'bKash'),
+        ('nagad', 'Nagad'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payment_methods')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    account_number = models.CharField(max_length=20)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            # If this is set to default, unset all others for this user
+            SavedPaymentMethod.objects.filter(user=self.user).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.provider} - {self.account_number} ({self.user.username})"

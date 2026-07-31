@@ -100,3 +100,39 @@ class AdminUserListView(generics.ListAPIView):
             data=response.data,
             status=status.HTTP_200_OK
         )
+
+from .models import SavedPaymentMethod
+from .serializers import SavedPaymentMethodSerializer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+
+class SavedPaymentMethodListCreateView(generics.ListCreateAPIView):
+    serializer_class = SavedPaymentMethodSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedPaymentMethod.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+class SavedPaymentMethodDetailView(generics.DestroyAPIView):
+    serializer_class = SavedPaymentMethodSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedPaymentMethod.objects.filter(user=self.request.user)
+
+class SetDefaultPaymentMethodView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        method = get_object_or_404(SavedPaymentMethod, pk=pk, user=request.user)
+        method.is_default = True
+        method.save()
+        return Response({'message': 'Default payment method updated.'}, status=status.HTTP_200_OK)

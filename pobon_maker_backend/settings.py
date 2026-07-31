@@ -56,6 +56,9 @@ INSTALLED_APPS = [
     # Local Apps
     'accounts',
     'products',
+    'admin_settings',
+    'orders',
+    'user_activity',
 ]
 
 MIDDLEWARE = [

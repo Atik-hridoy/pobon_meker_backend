@@ -99,3 +99,15 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'date_joined', 'avatar', 'phone_number', 'shipping_address')
+
+from .models import SavedPaymentMethod
+
+class SavedPaymentMethodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedPaymentMethod
+        fields = ('id', 'provider', 'account_number', 'is_default', 'created_at')
+        read_only_fields = ('id', 'created_at')
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
