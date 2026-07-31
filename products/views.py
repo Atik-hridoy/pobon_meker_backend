@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import Category, Product, ProductImage, Banner
 from .serializers import CategorySerializer, ProductSerializer, BannerSerializer
+from .pagination import ProductPagination
 from core.responses import StandardResponse
 
 class CategoryListAPIView(generics.ListAPIView):
@@ -148,4 +149,25 @@ class BannerListCreateAPIView(generics.ListCreateAPIView):
             message="Banners created successfully.",
             data=serializer.data,
             status=status.HTTP_201_CREATED
+        )
+
+class PublicProductListAPIView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        queryset = Product.objects.all().order_by('-created_at')
+        category = self.request.query_params.get('category', None)
+        if category:
+            queryset = queryset.filter(category__name=category)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return StandardResponse(
+            success=True,
+            message="Public products retrieved successfully.",
+            data=response.data,
+            status=status.HTTP_200_OK
         )

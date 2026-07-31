@@ -19,7 +19,11 @@ def populate_mock_data():
     category_names = ['IPS', 'Induction', 'Inferet', 'Digital weightscale', 'Sound system', 'Gadget item']
     categories = {}
     for name in category_names:
-        cat, created = Category.objects.get_or_create(name=name)
+        # Avoid slug collision
+        from django.utils.text import slugify
+        cat = Category.objects.filter(slug=slugify(name)).first()
+        if not cat:
+            cat = Category.objects.create(name=name)
         categories[name] = cat
         
     products_data = [
@@ -56,6 +60,17 @@ def populate_mock_data():
         {"name": "Anker PowerCore 10000mAh Power Bank", "category": "Gadget item", "price": "2200.00", "stock": 40, "kw": "powerbank,charger"},
         {"name": "Baseus 65W GaN Fast Charger", "category": "Gadget item", "price": "2800.00", "stock": 7, "kw": "charger,adapter"},
     ]
+
+    # Generate 100 more random products
+    for i in range(1, 101):
+        cat_name = random.choice(category_names)
+        products_data.append({
+            "name": f"Mock Product {i} - {cat_name}",
+            "category": cat_name,
+            "price": str(random.randint(500, 25000)) + ".00",
+            "stock": random.randint(0, 50),
+            "kw": "electronics,product"
+        })
 
     print(f"Creating {len(products_data)} products...")
     

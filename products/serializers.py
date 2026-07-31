@@ -23,11 +23,6 @@ class ProductSerializer(serializers.ModelSerializer):
             'price', 'stock_count', 'description', 'status',
             'created_at', 'updated_at', 'images'
         ]
-
-class BannerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Banner
-        fields = ['id', 'title', 'image', 'link', 'is_active', 'created_at']
         
     def get_status(self, obj):
         if obj.stock_count == 0:
@@ -38,3 +33,8 @@ class BannerSerializer(serializers.ModelSerializer):
             return "LOW STOCK"
         else:
             return "IN STOCK"
+
+class BannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Banner
+        fields = ['id', 'title', 'image', 'link', 'is_active', 'created_at']
