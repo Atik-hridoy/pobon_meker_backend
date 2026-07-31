@@ -90,3 +90,12 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         profile.save()
         
         return instance
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(source='profile.avatar', read_only=True)
+    phone_number = serializers.CharField(source='profile.phone_number', read_only=True)
+    shipping_address = serializers.CharField(source='profile.shipping_address', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'date_joined', 'avatar', 'phone_number', 'shipping_address')

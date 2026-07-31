@@ -17,6 +17,23 @@ class UserAdmin(BaseUserAdmin):
             return list()
         return super(UserAdmin, self).get_inline_instances(request, obj)
 
+    @admin.action(description="Make selected users Admin (Superuser)")
+    def make_admin(self, request, queryset):
+        queryset.update(is_staff=True, is_superuser=True)
+        self.message_user(request, "Selected users are now Admins.")
+
+    @admin.action(description="Make selected users Staff (Moderator)")
+    def make_staff(self, request, queryset):
+        queryset.update(is_staff=True, is_superuser=False)
+        self.message_user(request, "Selected users are now Staff/Moderators.")
+
+    @admin.action(description="Make selected users Regular Users")
+    def make_regular(self, request, queryset):
+        queryset.update(is_staff=False, is_superuser=False)
+        self.message_user(request, "Selected users are now Regular Users.")
+
+    actions = ['make_admin', 'make_staff', 'make_regular']
+
 # Re-register UserAdmin
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)

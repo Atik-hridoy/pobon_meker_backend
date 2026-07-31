@@ -1,10 +1,10 @@
 from rest_framework import generics, status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.models import User
 from core.responses import StandardResponse
-from .serializers import UserSerializer, UserProfileUpdateSerializer
+from .serializers import UserSerializer, UserProfileUpdateSerializer, AdminUserListSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -37,7 +37,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         is_admin = False
         is_staff = False
         try:
-            user = User.objects.get(username=username)
+            from django.db.models import Q
+            user = User.objects.get(Q(username__iexact=username) | Q(email__iexact=username))
             is_admin = user.is_superuser
             is_staff = user.is_staff
         except User.DoesNotExist:
@@ -83,5 +84,19 @@ class ProfileAPIView(generics.RetrieveUpdateAPIView):
             success=True,
             message="Profile updated successfully.",
             data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+class AdminUserListView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = AdminUserListSerializer
+    permission_classes = [IsAdminUser]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return StandardResponse(
+            success=True,
+            message="Users retrieved successfully.",
+            data=response.data,
             status=status.HTTP_200_OK
         )
