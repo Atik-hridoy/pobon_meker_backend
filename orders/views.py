@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.db import transaction
 
 class PlaceOrderView(APIView):
-    permission_classes = [] 
+    permission_classes = [IsAuthenticated]
 
     @transaction.atomic
     def post(self, request):
@@ -151,7 +151,7 @@ class PlaceOrderView(APIView):
 
         # CREATE THE ORDER
         order = Order(
-            user=request.user if request.user.is_authenticated else None,
+            user=request.user,
             full_name=shipping_info.get('fullName', 'Guest'),
             email=shipping_info.get('email', ''),
             phone=shipping_info.get('phone', ''),
