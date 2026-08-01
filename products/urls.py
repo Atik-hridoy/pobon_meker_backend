@@ -1,8 +1,8 @@
 from django.urls import path
-from .views import CategoryListAPIView, ProductListCreateAPIView, ProductDetailAPIView, BannerListCreateAPIView, PublicProductListAPIView, ProductReviewListCreateView, BestSellingProductsAPIView
+from .views import CategoryListCreateAPIView, ProductListCreateAPIView, ProductDetailAPIView, BannerListCreateAPIView, PublicProductListAPIView, ProductReviewListCreateView, BestSellingProductsAPIView
 
 urlpatterns = [
-    path('categories/', CategoryListAPIView.as_view(), name='category-list'),
+    path('categories/', CategoryListCreateAPIView.as_view(), name='category-list-create'),
     path('banners/', BannerListCreateAPIView.as_view(), name='banner-list-create'),
     path('public/', PublicProductListAPIView.as_view(), name='public-product-list'),
     path('best-sellers/', BestSellingProductsAPIView.as_view(), name='best-sellers'),
