@@ -20,8 +20,18 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from django.http import HttpResponse
+
+def create_admin(request):
+    from django.contrib.auth.models import User
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser('admin', 'admin@admin.com', 'admin123')
+        return HttpResponse("<h3>Admin created successfully!</h3><p>Username: <b>admin</b></p><p>Password: <b>admin123</b></p>")
+    return HttpResponse("<h3>Admin already exists!</h3><p>Username: <b>admin</b></p><p>Password: <b>admin123</b></p>")
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('create-admin/', create_admin),
     path('api/accounts/', include('accounts.urls')),
     path('api/products/', include('products.urls')),
     path('api/admin/', include('admin_settings.urls')),
