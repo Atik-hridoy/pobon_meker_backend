@@ -76,3 +76,41 @@ class MyWishlistView(APIView):
         products = [item.product for item in wishlist_items]
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UserRecommendationsView(APIView):
+    permission_classes = [] # Handled internally
+
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return Response([], status=status.HTTP_200_OK)
+            
+        recent_views = RecentlyViewed.objects.filter(user=request.user)
+        wishlist_items = WishlistItem.objects.filter(user=request.user)
+        
+        if not recent_views.exists() and not wishlist_items.exists():
+            return Response([], status=status.HTTP_200_OK)
+            
+        category_ids = set()
+        product_ids_to_exclude = set()
+        
+        for rv in recent_views:
+            if rv.product.category:
+                category_ids.add(rv.product.category.id)
+            product_ids_to_exclude.add(rv.product.id)
+            
+        for wi in wishlist_items:
+            if wi.product.category:
+                category_ids.add(wi.product.category.id)
+            product_ids_to_exclude.add(wi.product.id)
+            
+        if not category_ids:
+            return Response([], status=status.HTTP_200_OK)
+            
+        # Get products in these categories, exclude already viewed/wishlisted, order by some metric or random
+        recommended_products = Product.objects.filter(
+            category_id__in=category_ids,
+            stock_count__gt=0
+        ).exclude(id__in=product_ids_to_exclude).order_by('?')[:8] # '?' for random, or we can use '-created_at'
+        
+        serializer = ProductSerializer(recommended_products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
