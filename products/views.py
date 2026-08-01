@@ -158,9 +158,17 @@ class PublicProductListAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = Product.objects.all().order_by('-created_at')
-        category = self.request.query_params.get('category', None)
-        if category:
-            queryset = queryset.filter(category__name=category)
+        # Support multiple ?category=A&category=B or comma-separated ?category=A,B
+        categories = self.request.query_params.getlist('category')
+        parsed_categories = []
+        for cat in categories:
+            if ',' in cat:
+                parsed_categories.extend([c.strip() for c in cat.split(',') if c.strip()])
+            elif cat.strip():
+                parsed_categories.append(cat.strip())
+
+        if parsed_categories:
+            queryset = queryset.filter(category__name__in=parsed_categories)
         return queryset
 
     def list(self, request, *args, **kwargs):
