@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import serializers
 from .models import UserProfile
 
@@ -7,10 +8,11 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     re_type_password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
     phonenumber = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    agreed_terms = serializers.BooleanField(write_only=True, required=False, default=True)
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'phonenumber', 'password', 're_type_password')
+        fields = ('id', 'email', 'full_name', 'phonenumber', 'password', 're_type_password', 'agreed_terms')
         extra_kwargs = {
             'email': {'required': True}
         }
@@ -36,6 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data['password']
         full_name = validated_data['full_name'].strip()
         phonenumber = validated_data.get('phonenumber', '')
+        agreed_terms = validated_data.get('agreed_terms', True)
         
         # Split full_name into first_name and last_name (if possible)
         name_parts = full_name.split(' ', 1)
@@ -52,9 +55,12 @@ class UserSerializer(serializers.ModelSerializer):
         )
         
         # Update user profile created by signal
+        user.profile.agreed_terms = bool(agreed_terms)
+        if agreed_terms:
+            user.profile.agreed_terms_at = timezone.now()
         if phonenumber:
             user.profile.phone_number = phonenumber
-            user.profile.save()
+        user.profile.save()
         
         return user
 
@@ -62,10 +68,13 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(source='profile.phone_number', required=False, allow_blank=True)
     shipping_address = serializers.CharField(source='profile.shipping_address', required=False, allow_blank=True)
     avatar = serializers.ImageField(source='profile.avatar', required=False, allow_null=True)
+    agreed_terms = serializers.BooleanField(source='profile.agreed_terms', read_only=True)
+    agreed_terms_at = serializers.DateTimeField(source='profile.agreed_terms_at', read_only=True)
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'email', 'phone_number', 'shipping_address', 'avatar')
+        fields = ('id', 'first_name', 'last_name', 'email', 'phone_number', 'shipping_address', 'avatar', 'agreed_terms', 'agreed_terms_at', 'date_joined')
+        read_only_fields = ('id', 'email', 'agreed_terms', 'agreed_terms_at', 'date_joined')
         
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -95,10 +104,12 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(source='profile.avatar', read_only=True)
     phone_number = serializers.CharField(source='profile.phone_number', read_only=True)
     shipping_address = serializers.CharField(source='profile.shipping_address', read_only=True)
+    agreed_terms = serializers.BooleanField(source='profile.agreed_terms', read_only=True)
+    agreed_terms_at = serializers.DateTimeField(source='profile.agreed_terms_at', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'date_joined', 'avatar', 'phone_number', 'shipping_address')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'date_joined', 'avatar', 'phone_number', 'shipping_address', 'agreed_terms', 'agreed_terms_at')
 
 from .models import SavedPaymentMethod
 

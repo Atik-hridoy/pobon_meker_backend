@@ -22,7 +22,7 @@ class CategoryListAPIView(generics.ListAPIView):
         )
 
 class ProductListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Product.objects.all().order_by('-created_at')
+    queryset = Product.objects.select_related('category').prefetch_related('images').all().order_by('-created_at')
     serializer_class = ProductSerializer
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     

@@ -3,16 +3,29 @@ from django.conf import settings
 
 class SystemSettings(models.Model):
     # This acts like a singleton model where we use the pk=1 or setting_type='billing_and_charges'
-    # For now, let's just make it a single row, or type-based.
     setting_type = models.CharField(max_length=50, unique=True, default='billing_and_charges')
+    
+    # Store Branding & Bangladesh Defaults
+    site_name = models.CharField(max_length=100, default='POBON MAKER')
+    site_tagline = models.CharField(max_length=255, default='Engineering Components & Maker Hub Bangladesh')
+    support_phone = models.CharField(max_length=20, default='+880 1700-000000')
+    support_email = models.EmailField(default='support@pabonmaker.com')
+    address = models.TextField(default='Dhaka, Bangladesh')
+    delivery_inside_dhaka = models.DecimalField(max_digits=10, decimal_places=2, default=60.00)
+    delivery_outside_dhaka = models.DecimalField(max_digits=10, decimal_places=2, default=120.00)
     
     # vat_config
     vat_enabled = models.BooleanField(default=True)
     vat_percentage = models.FloatField(default=0.0)
     
+    # Legal & BD Standard Policies
+    terms_and_conditions = models.TextField(blank=True, default="")
+    privacy_policy = models.TextField(blank=True, default="")
+
     # JSON Fields for nested data
     delivery_charges = models.JSONField(default=dict)
     gateway_fees = models.JSONField(default=dict)
+
     
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
