@@ -302,6 +302,7 @@ class AdminOrderDetailUpdateView(RetrieveUpdateDestroyAPIView):
             status=status.HTTP_200_OK
         )
         
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         from core.responses import StandardResponse
@@ -311,3 +312,46 @@ class AdminOrderDetailUpdateView(RetrieveUpdateDestroyAPIView):
             data=response.data,
             status=status.HTTP_200_OK
         )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        old_status = instance.status
+        new_status = serializer.validated_data.get('status', old_status)
+        
+        # If order was cancelled, restore stock
+        if old_status != 'CANCELLED' and new_status == 'CANCELLED':
+            product_ids = instance.items.values_list('product_id', flat=True)
+            products = Product.objects.select_for_update().filter(id__in=product_ids)
+            product_map = {p.id: p for p in products}
+            
+            products_to_update = []
+            for item in instance.items.all():
+                if item.product_id in product_map:
+                    product = product_map[item.product_id]
+                    product.stock_count += item.quantity
+                    products_to_update.append(product)
+            
+            if products_to_update:
+                Product.objects.bulk_update(products_to_update, ['stock_count'])
+                
+        # If order is un-cancelled, deduct stock again
+        elif old_status == 'CANCELLED' and new_status != 'CANCELLED':
+            product_ids = instance.items.values_list('product_id', flat=True)
+            products = Product.objects.select_for_update().filter(id__in=product_ids)
+            product_map = {p.id: p for p in products}
+            
+            products_to_update = []
+            from rest_framework.exceptions import ValidationError
+            for item in instance.items.all():
+                if item.product_id in product_map:
+                    product = product_map[item.product_id]
+                    if product.stock_count < item.quantity:
+                        raise ValidationError({'status': f'Cannot un-cancel order. Insufficient stock for "{product.name}".'})
+                    product.stock_count -= item.quantity
+                    products_to_update.append(product)
+            
+            if products_to_update:
+                Product.objects.bulk_update(products_to_update, ['stock_count'])
+                
+        serializer.save()
