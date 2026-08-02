@@ -25,22 +25,44 @@ class PlaceOrderView(APIView):
         if not isinstance(cart_items, list) or not cart_items:
             return Response({'error': 'cart_items must be a non-empty list'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Calculate subtotal and build items list for saving later
+        # Extract all product IDs to lock them in bulk
+        product_ids = [item.get('product_id') for item in cart_items if item.get('product_id')]
+        
+        if not product_ids:
+            return Response({'error': 'No valid products in cart'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lock products to prevent race conditions during concurrent checkouts
+        products = Product.objects.select_for_update().filter(id__in=product_ids)
+        product_map = {p.id: p for p in products}
+        
         subtotal = 0.0
         order_items_data = []
+        products_to_update = []
+
         for item in cart_items:
             try:
-                # Expecting product ID from frontend to link correctly, 
-                # but if not passed, we might just have price/qty. 
-                # Let's try to find product if passed, else just save price/qty
                 product_id = item.get('product_id')
-                product = None
-                if product_id:
-                    product = Product.objects.filter(id=product_id).first()
-                
-                price = float(item.get('price', 0))
                 qty = int(item.get('quantity', 1))
+                
+                if qty <= 0:
+                    return Response({'error': 'Quantity must be at least 1'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if product_id not in product_map:
+                    return Response({'error': f'Product {product_id} not found or unavailable.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                product = product_map[product_id]
+                
+                # 1. Stock Validation
+                if product.stock_count < qty:
+                    return Response({'error': f'Insufficient stock for "{product.name}". Only {product.stock_count} left.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # 2. Enforce True Price (Ignore frontend price completely)
+                price = float(product.price)
                 subtotal += price * qty
+                
+                # 3. Deduct Stock
+                product.stock_count -= qty
+                products_to_update.append(product)
                 
                 order_items_data.append({
                     'product': product,
@@ -48,7 +70,10 @@ class PlaceOrderView(APIView):
                     'quantity': qty
                 })
             except (ValueError, TypeError):
-                continue
+                return Response({'error': 'Invalid payload format.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Save all stock updates
+        Product.objects.bulk_update(products_to_update, ['stock_count'])
         
         # Get billing settings
         settings = cache.get('billing_and_charges')
